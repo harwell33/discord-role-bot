@@ -41,13 +41,10 @@ async def on_ready():
     print(f'Bot {bot.user} is now running!')
 
 # === /assign — призначення ролі користувачу ===
+# === Команда /assign — призначення ролі з терміном дії ===
 @bot.command()
 @commands.has_permissions(manage_roles=True)
 async def assign(ctx, member: discord.Member, role: discord.Role, days: int = None):
-    if not has_admin_role(ctx):
-        await ctx.send("⛔ You don't have permission to use this command.")
-        return
-
     if role_exists(member.id, role.id):
         await ctx.send(f"⚠️ {member.display_name} already has the role `{role.name}` tracked by the bot.")
         return

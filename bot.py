@@ -1,18 +1,20 @@
-# bot.py
+# === bot.py ===
 import discord
 from discord.ext import commands, tasks
 from database import init_db, add_role, get_active_roles, remove_role, get_users_with_role, get_expired_roles, role_exists, prolong_role
 from datetime import datetime
 import random
+import os
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 
-# ADMIN_ROLE_NAME більше не використовується, бо перевірка йде через Discord permissions
-
+# === Обробка помилок прав доступу ===
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.MissingPermissions):
@@ -35,12 +37,14 @@ async def check_expired_roles():
 
 @bot.event
 async def on_ready():
-    os.makedirs("data", exist_ok=True)  # <-- створюється папка
+    os.makedirs("data", exist_ok=True)
     init_db()
     check_expired_roles.start()
     print(f'Bot {bot.user} is now running!')
+    for guild in bot.guilds:
+        print(f'Connected to server: {guild.name} (ID: {guild.id})')
 
-# === Команда /assign — призначення ролі з терміном дії ===
+# === Команда /assign — видати роль з терміном дії ===
 @bot.command()
 @commands.has_permissions(manage_roles=True)
 async def assign(ctx, member: discord.Member, role: discord.Role, days: int = None):
@@ -52,7 +56,15 @@ async def assign(ctx, member: discord.Member, role: discord.Role, days: int = No
     add_role(user_id=member.id, role_id=role.id, days=days, assigned_by=ctx.author.id)
     await ctx.send(f"✅ Role `{role.name}` has been assigned to {member.display_name}" + (f" for {days} days." if days else "."))
 
-# === /prolong — продовження терміну дії ролі ===
+# === Команда /remove — зняти роль ===
+@bot.command()
+@commands.has_permissions(manage_roles=True)
+async def remove(ctx, member: discord.Member, role: discord.Role):
+    await member.remove_roles(role)
+    remove_role(member.id, role.id)
+    await ctx.send(f"🗑️ Role `{role.name}` has been removed from {member.display_name}.")
+
+# === Команда /prolong — подовжити термін дії ролі ===
 @bot.command()
 @commands.has_permissions(manage_roles=True)
 async def prolong(ctx, member: discord.Member, role: discord.Role, days: int):
@@ -63,21 +75,7 @@ async def prolong(ctx, member: discord.Member, role: discord.Role, days: int):
     prolong_role(member.id, role.id, days)
     await ctx.send(f"🔁 Role `{role.name}` for {member.display_name} has been extended by {days} days.")
 
-# === /help — короткий список доступних команд ===
-@bot.command()
-async def help(ctx):
-    help_text = (
-        "🛠 **Available Commands:**\n"
-        "`!assign @user @role [days]` — assign a role optionally with duration\n"
-        "`!remove @user @role` — remove a role\n"
-        "`!prolong @user @role days` — extend role duration\n"
-        "`!myroles` — show your active roles\n"
-        "`!list @role` — list users with this role\n"
-        "`!randomrole @role days count` — randomly assign a role to users`\n"
-    )
-    await ctx.send(help_text)
-    
-# === /myroles — показати свої ролі та залишок днів ===
+# === Команда /myroles — показати активні ролі користувача ===
 @bot.command()
 async def myroles(ctx):
     user_roles = get_active_roles(ctx.author.id)
@@ -92,16 +90,11 @@ async def myroles(ctx):
             continue
         if expires_at:
             try:
-                dt_expire = datetime.fromisoformat(expires_at)
-                delta = dt_expire - datetime.utcnow()
-                days, seconds = delta.days, delta.seconds
-                hours = seconds // 3600
-                minutes = (seconds % 3600) // 60
-                seconds = seconds % 60
-                lines.append(
-                    f"• `{role.name}` — {days}d {hours}h {minutes}m {seconds}s left "
-                    f"(until {dt_expire.strftime('%Y-%m-%d %H:%M:%S UTC')})"
-                )
+                delta = datetime.fromisoformat(expires_at) - datetime.utcnow()
+                days = delta.days
+                hours, remainder = divmod(delta.seconds, 3600)
+                minutes, seconds = divmod(remainder, 60)
+                lines.append(f"• `{role.name}` — {days}d {hours}h {minutes}m {seconds}s left")
             except ValueError:
                 lines.append(f"• `{role.name}` — error in date")
         else:
@@ -109,55 +102,38 @@ async def myroles(ctx):
 
     await ctx.send("🧾 Your active roles:\n" + "\n".join(lines))
 
-# === /remove — видалити роль вручну ===
+# === Команда /list — список користувачів з роллю ===
 @bot.command()
 @commands.has_permissions(manage_roles=True)
-async def remove(ctx, member: discord.Member, role: discord.Role):
-    await member.remove_roles(role)
-    remove_role(member.id, role.id)
-    await ctx.send(f"🗑️ Role `{role.name}` has been removed from {member.display_name}.")
-
-
-# === /list — список користувачів з роллю ===
-@bot.command()
 async def list(ctx, role: discord.Role):
-    members = get_users_with_role(role.id)
-    if not members:
-        await ctx.send(f"📭 No users found with role `{role.name}`.")
+    users = get_users_with_role(role.id)
+    if not users:
+        await ctx.send(f"📭 No users have the role `{role.name}`.")
         return
 
     lines = []
-    for user_id, expires_at in members:
+    for user_id, expires_at in users:
         member = ctx.guild.get_member(user_id)
         if not member:
             continue
         if expires_at:
             try:
-                dt_expire = datetime.fromisoformat(expires_at)
-                delta = dt_expire - datetime.utcnow()
-                days, seconds = delta.days, delta.seconds
-                hours = seconds // 3600
-                minutes = (seconds % 3600) // 60
-                seconds = seconds % 60
-                lines.append(
-                    f"• {member.display_name} — {days}d {hours}h {minutes}m {seconds}s left "
-                    f"(until {dt_expire.strftime('%Y-%m-%d %H:%M:%S UTC')})"
-                )
+                delta = datetime.fromisoformat(expires_at) - datetime.utcnow()
+                days = delta.days
+                hours, remainder = divmod(delta.seconds, 3600)
+                minutes, seconds = divmod(remainder, 60)
+                lines.append(f"• {member.display_name} — {days}d {hours}h {minutes}m {seconds}s left")
             except ValueError:
                 lines.append(f"• {member.display_name} — error in date")
         else:
             lines.append(f"• {member.display_name} — permanent")
 
-    await ctx.send(f"🧾 Members with role `{role.name}`:\n" + "\n".join(lines))
+    await ctx.send(f"📋 Users with role `{role.name}`:\n" + "\n".join(lines))
 
-# === /randomrole — випадкова видача ролі N учасникам на X днів ===
+# === Команда /randomrole — видати роль випадковим учасникам ===
 @bot.command()
 @commands.has_permissions(manage_roles=True)
 async def randomrole(ctx, role: discord.Role, days: int, amount: int):
-    if not has_admin_role(ctx):
-        await ctx.send("⛔ You don't have permission to use this command.")
-        return
-
     eligible_members = [
         m for m in ctx.guild.members
         if not m.bot and not role_exists(m.id, role.id) and role not in m.roles
@@ -174,14 +150,22 @@ async def randomrole(ctx, role: discord.Role, days: int, amount: int):
 
     mentions = ", ".join(m.mention for m in selected)
     await ctx.send(f"🎲 Assigned role `{role.name}` for {days} days to: {mentions}")
-    
-# === Запуск бота як веб-сервісу ===
-import os
-import threading
-from http.server import BaseHTTPRequestHandler, HTTPServer
 
-TOKEN = os.environ.get("DISCORD_TOKEN")
+# === /help — короткий список доступних команд ===
+@bot.command()
+async def help(ctx):
+    help_text = (
+        "🛠 **Available Commands:**\n"
+        "`!assign @user @role [days]` — assign a role optionally with duration\n"
+        "`!remove @user @role` — remove a role\n"
+        "`!prolong @user @role days` — extend role duration\n"
+        "`!myroles` — show your active roles\n"
+        "`!list @role` — list users with this role\n"
+        "`!randomrole @role days count` — randomly assign a role to users"
+    )
+    await ctx.send(help_text)
 
+# === Запуск веб-сервера для Render ===
 class SimpleHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -195,6 +179,8 @@ def run_web_server():
 
 threading.Thread(target=run_web_server, daemon=True).start()
 
+# === Запуск бота ===
+TOKEN = os.environ.get("DISCORD_TOKEN")
 if not TOKEN:
     print("❌ Discord token not found. Set the DISCORD_TOKEN environment variable.")
 else:

@@ -33,6 +33,11 @@ async def check_expired_roles():
         if member and role:
             await member.remove_roles(role)
             remove_role(user_id, role_id)
+            log_channel_id = get_log_channel(guild.id)
+            if log_channel_id:
+                log_channel = guild.get_channel(log_channel_id)
+                if log_channel:
+                    await log_channel.send(f"⏰ Auto-removed `{role.name}` from {member.mention} (expired)")
             print(f"[AUTO] Removed role '{role.name}' from '{member.display_name}' (expired)")
 
 @bot.event
@@ -54,6 +59,11 @@ async def assign(ctx, member: discord.Member, role: discord.Role, days: int = No
 
     await member.add_roles(role)
     add_role(user_id=member.id, role_id=role.id, days=days, assigned_by=ctx.author.id)
+    log_channel_id = get_log_channel(ctx.guild.id)
+    if log_channel_id:
+        log_channel = ctx.guild.get_channel(log_channel_id)
+        if log_channel:
+            await log_channel.send(f"✅ {ctx.author.mention} assigned `{role.name}` to {member.mention}" + (f" for {days}d." if days else "."))
     await ctx.send(f"✅ Role `{role.name}` has been assigned to {member.display_name}" + (f" for {days} days." if days else "."))
 
 # === Команда /remove — зняти роль ===
@@ -62,6 +72,11 @@ async def assign(ctx, member: discord.Member, role: discord.Role, days: int = No
 async def remove(ctx, member: discord.Member, role: discord.Role):
     await member.remove_roles(role)
     remove_role(member.id, role.id)
+    log_channel_id = get_log_channel(ctx.guild.id)
+    if log_channel_id:
+        log_channel = ctx.guild.get_channel(log_channel_id)
+        if log_channel:
+            await log_channel.send(f"🗑️ {ctx.author.mention} removed `{role.name}` from {member.mention}")
     await ctx.send(f"🗑️ Role `{role.name}` has been removed from {member.display_name}.")
 
 # === Команда /prolong — подовжити термін дії ролі ===
@@ -73,6 +88,11 @@ async def prolong(ctx, member: discord.Member, role: discord.Role, days: int):
         return
 
     prolong_role(member.id, role.id, days)
+    log_channel_id = get_log_channel(ctx.guild.id)
+    if log_channel_id:
+        log_channel = ctx.guild.get_channel(log_channel_id)
+        if log_channel:
+            await log_channel.send(f"🔁 {ctx.author.mention} prolonged `{role.name}` for {member.mention} by {days}d")
     await ctx.send(f"🔁 Role `{role.name}` for {member.display_name} has been extended by {days} days.")
 
 # === Команда /myroles — показати активні ролі користувача ===
@@ -151,6 +171,14 @@ async def randomrole(ctx, role: discord.Role, days: int, amount: int):
     mentions = ", ".join(m.mention for m in selected)
     await ctx.send(f"🎲 Assigned role `{role.name}` for {days} days to: {mentions}")
 
+# === Команда /logchannel — задати канал для логів ===
+@bot.command()
+@commands.has_permissions(manage_guild=True)
+async def logchannel(ctx, channel: discord.TextChannel):
+    from database import set_log_channel
+    set_log_channel(ctx.guild.id, channel.id)
+    await ctx.send(f"📓 Log channel set to {channel.mention}")
+
 # === /help — короткий список доступних команд ===
 @bot.command()
 async def help(ctx):
@@ -185,3 +213,4 @@ if not TOKEN:
     print("❌ Discord token not found. Set the DISCORD_TOKEN environment variable.")
 else:
     bot.run(TOKEN)
+

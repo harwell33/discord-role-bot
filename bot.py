@@ -1,10 +1,7 @@
 # bot.py
 import discord
 from discord.ext import commands, tasks
-from database import (
-    init_db, add_role, get_active_roles, remove_role,
-    get_users_with_role, get_expired_roles, role_exists, prolong_role
-)
+from database import init_db, add_role, get_active_roles, remove_role, get_users_with_role, get_expired_roles, role_exists, prolong_role
 from datetime import datetime
 import random
 
@@ -14,18 +11,14 @@ intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# ADMIN_ROLE_NAME більше не використовується, бо перевірка йде через Discord permissions
+
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.MissingPermissions):
         await ctx.send("⛔ You need the 'Manage Roles' permission to use this command.")
     else:
         raise error
-
-@bot.event
-async def on_ready():
-    init_db()
-    check_expired_roles.start()
-    print(f'Bot {bot.user} is now running!')
 
 # === Автоматичне зняття прострочених ролей ===
 @tasks.loop(hours=24)
@@ -39,6 +32,13 @@ async def check_expired_roles():
             await member.remove_roles(role)
             remove_role(user_id, role_id)
             print(f"[AUTO] Removed role '{role.name}' from '{member.display_name}' (expired)")
+
+@bot.event
+async def on_ready():
+    init_db()
+    check_expired_roles.start()
+    print(f'Bot {bot.user} is now running!')
+    print(f'Bot {bot.user} is now running!')
 
 # === /assign — призначення ролі користувачу ===
 @bot.command()

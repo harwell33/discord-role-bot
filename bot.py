@@ -40,7 +40,6 @@ async def on_ready():
     check_expired_roles.start()
     print(f'Bot {bot.user} is now running!')
 
-# === /assign — призначення ролі користувачу ===
 # === Команда /assign — призначення ролі з терміном дії ===
 @bot.command()
 @commands.has_permissions(manage_roles=True)
@@ -57,16 +56,32 @@ async def assign(ctx, member: discord.Member, role: discord.Role, days: int = No
 @bot.command()
 @commands.has_permissions(manage_roles=True)
 async def prolong(ctx, member: discord.Member, role: discord.Role, days: int):
-    if not has_admin_role(ctx):
-        await ctx.send("⛔ You don't have permission to use this command.")
-        return
-
     if not role_exists(member.id, role.id):
         await ctx.send(f"⚠️ Role `{role.name}` is not tracked for {member.display_name}.")
         return
 
     prolong_role(member.id, role.id, days)
     await ctx.send(f"🔁 Role `{role.name}` for {member.display_name} has been extended by {days} days.")
+
+# === /help — короткий список доступних команд ===
+@bot.command()
+async def help(ctx):
+    help_text = (
+        "🛠 **Available Commands:**
+"
+        "`!assign @user @role [days]` — assign a role optionally with duration
+"
+        "`!remove @user @role` — remove a role
+"
+        "`!prolong @user @role days` — extend role duration
+"
+        "`!myroles` — show your active roles
+"
+        "`!list @role` — list users with this role
+"
+        "`!randomrole @role days count` — randomly assign a role to users"
+    )
+    await ctx.send(help_text)
 
 # === /myroles — показати свої ролі та залишок днів ===
 @bot.command()
@@ -104,13 +119,10 @@ async def myroles(ctx):
 @bot.command()
 @commands.has_permissions(manage_roles=True)
 async def remove(ctx, member: discord.Member, role: discord.Role):
-    if not has_admin_role(ctx):
-        await ctx.send("⛔ You don't have permission to use this command.")
-        return
-
     await member.remove_roles(role)
     remove_role(member.id, role.id)
     await ctx.send(f"🗑️ Role `{role.name}` has been removed from {member.display_name}.")
+
 
 # === /list — список користувачів з роллю ===
 @bot.command()

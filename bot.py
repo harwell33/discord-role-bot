@@ -35,9 +35,9 @@ async def check_expired_roles():
 
 @bot.event
 async def on_ready():
+    os.makedirs("data", exist_ok=True)  # <-- створюється папка
     init_db()
     check_expired_roles.start()
-    print(f'Bot {bot.user} is now running!')
     print(f'Bot {bot.user} is now running!')
 
 # === /assign — призначення ролі користувачу ===

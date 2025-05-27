@@ -203,11 +203,7 @@ async def expires(ctx):
                 except Exception:
                     continue
     if all_data:
-        await ctx.send("⏳ Expiring roles:
-" + "
-".join(all_data))
-    else:
-        await ctx.send("✅ No expiring roles found."))
+        await ctx.send("⏳ Expiring roles:\n" + "\n".join(all_data))
     else:
         await ctx.send("✅ No expiring roles found.")
 
@@ -223,26 +219,16 @@ async def disablelog(ctx):
 @bot.command()
 async def help(ctx):
     help_text = (
-        "🛠 **Available Commands:**
-"
-        "`!assign @user @role [days]` — assign a role optionally with duration
-"
-        "`!remove @user @role` — remove a role
-"
-        "`!prolong @user @role days` — extend role duration
-"
-        "`!myroles` — show your active roles
-"
-        "`!list @role` — list users with this role
-"
-        "`!randomrole @role days count` — randomly assign a role to users
-"
-        "`!logchannel #channel` — set log channel for role actions
-"
-        "`!disablelog` — disable log channel
-"
-        "`!expires` — list roles that are about to expire
-"
+        "🛠 **Available Commands:**\n"
+        "`!assign @user @role [days]` — assign a role optionally with duration\n"
+        "`!remove @user @role` — remove a role\n"
+        "`!prolong @user @role days` — extend role duration\n"
+        "`!myroles` — show your active roles\n"
+        "`!list @role` — list users with this role\n"
+        "`!randomrole @role days count` — randomly assign a role to users\n"
+        "`!logchannel #channel` — set log channel for role actions\n"
+        "`!disablelog` — disable log channel\n"
+        "`!expires` — list roles that are about to expire\n"
     )
     await ctx.send(help_text)
 

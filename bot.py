@@ -172,9 +172,26 @@ async def randomrole(ctx, role: discord.Role, days: int, amount: int):
     mentions = ", ".join(m.mention for m in selected)
     await ctx.send(f"🎲 Assigned role `{role.name}` for {days} days to: {mentions}")
     
-# === Запуск бота ===
+# === Запуск бота як веб-сервісу ===
 import os
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
 TOKEN = os.environ.get("DISCORD_TOKEN")
+
+class SimpleHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b'OK')
+
+def run_web_server():
+    port = int(os.environ.get("PORT", 3000))
+    server = HTTPServer(("", port), SimpleHandler)
+    server.serve_forever()
+
+threading.Thread(target=run_web_server, daemon=True).start()
+
 if not TOKEN:
     print("❌ Discord token not found. Set the DISCORD_TOKEN environment variable.")
 else:

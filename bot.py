@@ -67,19 +67,13 @@ async def prolong(ctx, member: discord.Member, role: discord.Role, days: int):
 @bot.command()
 async def help(ctx):
     help_text = (
-        "🛠 **Available Commands:**
-"
-        "`!assign @user @role [days]` — assign a role optionally with duration
-"
-        "`!remove @user @role` — remove a role
-"
-        "`!prolong @user @role days` — extend role duration
-"
-        "`!myroles` — show your active roles
-"
-        "`!list @role` — list users with this role
-"
-        "`!randomrole @role days count` — randomly assign a role to users"
+        "🛠 **Available Commands:**\n"
+        "`!assign @user @role [days]` — assign a role optionally with duration\n"
+        "`!remove @user @role` — remove a role\n"
+        "`!prolong @user @role days` — extend role duration\n"
+        "`!myroles` — show your active roles\n"
+        "`!list @role` — list users with this role\n"
+        "`!randomrole @role days count` — randomly assign a role to users`\n"
     )
     await ctx.send(help_text)
     

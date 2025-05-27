@@ -207,6 +207,8 @@ async def expires(ctx):
 " + "
 ".join(all_data))
     else:
+        await ctx.send("✅ No expiring roles found."))
+    else:
         await ctx.send("✅ No expiring roles found.")
 
 # === Команда /disablelog — прибрати лог-канал ===
@@ -239,7 +241,8 @@ async def help(ctx):
 "
         "`!disablelog` — disable log channel
 "
-        "`!expires` — list roles that are about to expire"
+        "`!expires` — list roles that are about to expire
+"
     )
     await ctx.send(help_text)
 

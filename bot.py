@@ -82,7 +82,7 @@ async def help(ctx):
         "`!randomrole @role days count` — randomly assign a role to users"
     )
     await ctx.send(help_text)
-
+    
 # === /myroles — показати свої ролі та залишок днів ===
 @bot.command()
 async def myroles(ctx):

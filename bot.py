@@ -179,17 +179,67 @@ async def logchannel(ctx, channel: discord.TextChannel):
     set_log_channel(ctx.guild.id, channel.id)
     await ctx.send(f"📓 Log channel set to {channel.mention}")
 
+# === Команда /expires — список ролей, що скоро завершаться ===
+@bot.command()
+@commands.has_permissions(manage_roles=True)
+async def expires(ctx):
+    from database import get_active_roles
+    all_data = []
+    for member in ctx.guild.members:
+        if member.bot:
+            continue
+        roles = get_active_roles(member.id)
+        for role_id, expires_at in roles:
+            if expires_at:
+                try:
+                    delta = datetime.fromisoformat(expires_at) - datetime.utcnow()
+                    days = delta.days
+                    hours, remainder = divmod(delta.seconds, 3600)
+                    minutes, seconds = divmod(remainder, 60)
+                    if delta.total_seconds() > 0:
+                        role = ctx.guild.get_role(role_id)
+                        if role:
+                            all_data.append(f"• {member.display_name} — `{role.name}` expires in {days}d {hours}h {minutes}m {seconds}s")
+                except Exception:
+                    continue
+    if all_data:
+        await ctx.send("⏳ Expiring roles:
+" + "
+".join(all_data))
+    else:
+        await ctx.send("✅ No expiring roles found.")
+
+# === Команда /disablelog — прибрати лог-канал ===
+@bot.command()
+@commands.has_permissions(manage_guild=True)
+async def disablelog(ctx):
+    from database import set_log_channel
+    set_log_channel(ctx.guild.id, None)
+    await ctx.send("📵 Log channel disabled.")
+
 # === /help — короткий список доступних команд ===
 @bot.command()
 async def help(ctx):
     help_text = (
-        "🛠 **Available Commands:**\n"
-        "`!assign @user @role [days]` — assign a role optionally with duration\n"
-        "`!remove @user @role` — remove a role\n"
-        "`!prolong @user @role days` — extend role duration\n"
-        "`!myroles` — show your active roles\n"
-        "`!list @role` — list users with this role\n"
-        "`!randomrole @role days count` — randomly assign a role to users"
+        "🛠 **Available Commands:**
+"
+        "`!assign @user @role [days]` — assign a role optionally with duration
+"
+        "`!remove @user @role` — remove a role
+"
+        "`!prolong @user @role days` — extend role duration
+"
+        "`!myroles` — show your active roles
+"
+        "`!list @role` — list users with this role
+"
+        "`!randomrole @role days count` — randomly assign a role to users
+"
+        "`!logchannel #channel` — set log channel for role actions
+"
+        "`!disablelog` — disable log channel
+"
+        "`!expires` — list roles that are about to expire"
     )
     await ctx.send(help_text)
 
@@ -213,4 +263,3 @@ if not TOKEN:
     print("❌ Discord token not found. Set the DISCORD_TOKEN environment variable.")
 else:
     bot.run(TOKEN)
-

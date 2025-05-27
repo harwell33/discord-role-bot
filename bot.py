@@ -1,7 +1,7 @@
 # === bot.py ===
 import discord
 from discord.ext import commands, tasks
-from database import init_db, add_role, get_active_roles, remove_role, get_users_with_role, get_expired_roles, role_exists, prolong_role
+from database import init_db, add_role, get_active_roles, remove_role, get_users_with_role, get_expired_roles, role_exists, prolong_role, get_log_channel
 from datetime import datetime
 import random
 import os

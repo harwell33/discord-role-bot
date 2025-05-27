@@ -172,4 +172,10 @@ async def randomrole(ctx, role: discord.Role, days: int, amount: int):
     mentions = ", ".join(m.mention for m in selected)
     await ctx.send(f"🎲 Assigned role `{role.name}` for {days} days to: {mentions}")
     
-bot.run("AUTH-TOKEN")
+# === Запуск бота ===
+import os
+TOKEN = os.environ.get("DISCORD_TOKEN")
+if not TOKEN:
+    print("❌ Discord token not found. Set the DISCORD_TOKEN environment variable.")
+else:
+    bot.run(TOKEN)

@@ -246,6 +246,8 @@ async def expires(ctx):
     else:
         await ctx.send("✅ No expiring roles found."))
     else:
+        await ctx.send("✅ No expiring roles found."))
+    else:
         await ctx.send("✅ No expiring roles found.")
 
 # === Команда /disablelog — прибрати лог-канал ===

@@ -1,7 +1,11 @@
 # === bot.py ===
 import discord
 from discord.ext import commands, tasks
-from database import init_db, add_role, get_active_roles, remove_role, get_users_with_role, get_expired_roles, role_exists, prolong_role
+from database import (
+    init_db, add_role, get_active_roles, remove_role, 
+    get_users_with_role, get_expired_roles, role_exists, 
+    prolong_role, get_log_channel, set_log_channel  # Додано імпорт get_log_channel
+)
 from datetime import datetime
 import random
 import os
@@ -125,6 +129,7 @@ async def prolong(ctx, member: discord.Member, role: discord.Role, days: int):
         return
 
     prolong_role(member.id, role.id, days)
+    upload_db()  # Додано збереження в базу
     log_channel_id = get_log_channel(ctx.guild.id)
     if log_channel_id:
         log_channel = ctx.guild.get_channel(log_channel_id)
@@ -204,7 +209,8 @@ async def randomrole(ctx, role: discord.Role, days: int, amount: int):
     for member in selected:
         await member.add_roles(role)
         add_role(member.id, role.id, days=days, assigned_by=ctx.author.id)
-
+    
+    upload_db()  # Додано збереження в базу
     mentions = ", ".join(m.mention for m in selected)
     await ctx.send(f"🎲 Assigned role `{role.name}` for {days} days to: {mentions}")
 
@@ -212,7 +218,6 @@ async def randomrole(ctx, role: discord.Role, days: int, amount: int):
 @bot.command()
 @commands.has_permissions(manage_guild=True)
 async def logchannel(ctx, channel: discord.TextChannel):
-    from database import set_log_channel
     set_log_channel(ctx.guild.id, channel.id)
     await ctx.send(f"📓 Log channel set to {channel.mention}")
 
@@ -220,7 +225,6 @@ async def logchannel(ctx, channel: discord.TextChannel):
 @bot.command()
 @commands.has_permissions(manage_roles=True)
 async def expires(ctx):
-    from database import get_active_roles
     all_data = []
     for member in ctx.guild.members:
         if member.bot:
@@ -240,13 +244,7 @@ async def expires(ctx):
                 except Exception:
                     continue
     if all_data:
-        await ctx.send("⏳ Expiring roles:
-" + "
-".join(all_data))
-    else:
-        await ctx.send("✅ No expiring roles found."))
-    else:
-        await ctx.send("✅ No expiring roles found."))
+        await ctx.send("⏳ Expiring roles:\n" + "\n".join(all_data))
     else:
         await ctx.send("✅ No expiring roles found.")
 
@@ -254,7 +252,6 @@ async def expires(ctx):
 @bot.command()
 @commands.has_permissions(manage_guild=True)
 async def disablelog(ctx):
-    from database import set_log_channel
     set_log_channel(ctx.guild.id, None)
     await ctx.send("📵 Log channel disabled.")
 
@@ -262,26 +259,16 @@ async def disablelog(ctx):
 @bot.command()
 async def help(ctx):
     help_text = (
-        "🛠 **Available Commands:**
-"
-        "`!assign @user @role [days]` — assign a role optionally with duration
-"
-        "`!remove @user @role` — remove a role
-"
-        "`!prolong @user @role days` — extend role duration
-"
-        "`!myroles` — show your active roles
-"
-        "`!list @role` — list users with this role
-"
-        "`!randomrole @role days count` — randomly assign a role to users
-"
-        "`!logchannel #channel` — set log channel for role actions
-"
-        "`!disablelog` — disable log channel
-"
-        "`!expires` — list roles that are about to expire
-"
+        "🛠 **Available Commands:**\n"
+        "`!assign @user @role [days]` — assign a role optionally with duration\n"
+        "`!remove @user @role` — remove a role\n"
+        "`!prolong @user @role days` — extend role duration\n"
+        "`!myroles` — show your active roles\n"
+        "`!list @role` — list users with this role\n"
+        "`!randomrole @role days count` — randomly assign a role to users\n"
+        "`!logchannel #channel` — set log channel for role actions\n"
+        "`!disablelog` — disable log channel\n"
+        "`!expires` — list roles that are about to expire\n"
     )
     await ctx.send(help_text)
 

@@ -1,7 +1,7 @@
 # === bot.py ===
 import discord
 from discord.ext import commands, tasks
-from database import init_db, add_role, get_active_roles, remove_role, get_users_with_role, get_expired_roles, role_exists, prolong_role, get_log_channel
+from database import init_db, add_role, get_active_roles, remove_role, get_users_with_role, get_expired_roles, role_exists, prolong_role
 from datetime import datetime
 import random
 import os
@@ -14,9 +14,43 @@ intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 
+# === Dropbox завантаження/збереження ===
+import dropbox
+
+def download_db():
+    token = os.environ.get("DROPBOX_TOKEN")
+    if not token:
+        print("❌ DROPBOX_TOKEN not set")
+        return
+
+    dbx = dropbox.Dropbox(token)
+    try:
+        metadata, res = dbx.files_download("/roles.db")
+        os.makedirs("data", exist_ok=True)
+        with open("data/roles.db", "wb") as f:
+            f.write(res.content)
+        print("✅ roles.db завантажено з Dropbox")
+    except dropbox.exceptions.ApiError as e:
+        print("⚠️ Не вдалося завантажити roles.db з Dropbox:", e)
+
+def upload_db():
+    token = os.environ.get("DROPBOX_TOKEN")
+    if not token:
+        print("❌ DROPBOX_TOKEN not set")
+        return
+
+    dbx = dropbox.Dropbox(token)
+    try:
+        with open("data/roles.db", "rb") as f:
+            dbx.files_upload(f.read(), "/roles.db", mode=dropbox.files.WriteMode.overwrite)
+        print("✅ roles.db збережено у Dropbox")
+    except Exception as e:
+        print("⚠️ Не вдалося зберегти roles.db у Dropbox:", e)
+
 # === Обробка помилок прав доступу ===
 @bot.event
 async def on_command_error(ctx, error):
+    upload_db()
     if isinstance(error, commands.MissingPermissions):
         await ctx.send("⛔ You need the 'Manage Roles' permission to use this command.")
     else:
@@ -42,6 +76,7 @@ async def check_expired_roles():
 
 @bot.event
 async def on_ready():
+    download_db()
     os.makedirs("data", exist_ok=True)
     init_db()
     check_expired_roles.start()
@@ -59,6 +94,7 @@ async def assign(ctx, member: discord.Member, role: discord.Role, days: int = No
 
     await member.add_roles(role)
     add_role(user_id=member.id, role_id=role.id, days=days, assigned_by=ctx.author.id)
+    upload_db()
     log_channel_id = get_log_channel(ctx.guild.id)
     if log_channel_id:
         log_channel = ctx.guild.get_channel(log_channel_id)
@@ -72,6 +108,7 @@ async def assign(ctx, member: discord.Member, role: discord.Role, days: int = No
 async def remove(ctx, member: discord.Member, role: discord.Role):
     await member.remove_roles(role)
     remove_role(member.id, role.id)
+    upload_db()
     log_channel_id = get_log_channel(ctx.guild.id)
     if log_channel_id:
         log_channel = ctx.guild.get_channel(log_channel_id)
@@ -203,7 +240,11 @@ async def expires(ctx):
                 except Exception:
                     continue
     if all_data:
-        await ctx.send("⏳ Expiring roles:\n" + "\n".join(all_data))
+        await ctx.send("⏳ Expiring roles:
+" + "
+".join(all_data))
+    else:
+        await ctx.send("✅ No expiring roles found."))
     else:
         await ctx.send("✅ No expiring roles found.")
 
@@ -219,16 +260,26 @@ async def disablelog(ctx):
 @bot.command()
 async def help(ctx):
     help_text = (
-        "🛠 **Available Commands:**\n"
-        "`!assign @user @role [days]` — assign a role optionally with duration\n"
-        "`!remove @user @role` — remove a role\n"
-        "`!prolong @user @role days` — extend role duration\n"
-        "`!myroles` — show your active roles\n"
-        "`!list @role` — list users with this role\n"
-        "`!randomrole @role days count` — randomly assign a role to users\n"
-        "`!logchannel #channel` — set log channel for role actions\n"
-        "`!disablelog` — disable log channel\n"
-        "`!expires` — list roles that are about to expire\n"
+        "🛠 **Available Commands:**
+"
+        "`!assign @user @role [days]` — assign a role optionally with duration
+"
+        "`!remove @user @role` — remove a role
+"
+        "`!prolong @user @role days` — extend role duration
+"
+        "`!myroles` — show your active roles
+"
+        "`!list @role` — list users with this role
+"
+        "`!randomrole @role days count` — randomly assign a role to users
+"
+        "`!logchannel #channel` — set log channel for role actions
+"
+        "`!disablelog` — disable log channel
+"
+        "`!expires` — list roles that are about to expire
+"
     )
     await ctx.send(help_text)
 

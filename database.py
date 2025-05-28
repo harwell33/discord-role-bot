@@ -4,22 +4,27 @@ from datetime import datetime, timedelta
 DB_PATH = "data/roles.db"
 
 def init_db():
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-        c.execute('''CREATE TABLE IF NOT EXISTS roles (
+    conn = sqlite3.connect("data/roles.db")
+    c = conn.cursor()
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS roles (
             user_id INTEGER,
             role_id INTEGER,
             expires_at TEXT,
-            assigned_by INTEGER,
-            UNIQUE(user_id, role_id)
-        ''')
-        c.execute('''CREATE TABLE IF NOT EXISTS log_channels (
+            assigned_by INTEGER
+        )
+    ''')
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS log_channels (
             guild_id INTEGER PRIMARY KEY,
             channel_id INTEGER
-        )''')
-        c.execute("CREATE INDEX IF NOT EXISTS idx_user_roles ON roles (user_id)")
-        c.execute("CREATE INDEX IF NOT EXISTS idx_role_users ON roles (role_id)")
-        conn.commit()
+        )
+    ''')
+
+    conn.commit()
+    conn.close()
 
 def add_role(user_id, role_id, days=None, assigned_by=None):
     expires_at = (datetime.utcnow() + timedelta(days=days)).isoformat() if days else None

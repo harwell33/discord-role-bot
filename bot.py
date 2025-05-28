@@ -51,6 +51,19 @@ def upload_db():
     except Exception as e:
         print("⚠️ Не вдалося зберегти roles.db у Dropbox:", e)
 
+@bot.event
+async def on_ready():
+    try:
+        download_db()
+        os.makedirs("data", exist_ok=True)
+        init_db()
+        check_expired_roles.start()
+        print(f'Bot {bot.user} is now running!')
+        for guild in bot.guilds:
+            print(f'Connected to server: {guild.name} (ID: {guild.id})')
+    except Exception as e:
+        print(f"❌ on_ready error: {e}")
+
 # === Обробка помилок прав доступу ===
 @bot.event
 async def on_command_error(ctx, error):
